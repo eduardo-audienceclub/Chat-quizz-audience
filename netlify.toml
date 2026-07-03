@@ -1,0 +1,91 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[dev]
+  port = 8888
+
+# Funções AGENDADAS (cron). Declaradas aqui (não só no in-source config.schedule)
+# porque o deploy via CLI não registra o schedule do in-source de forma confiável.
+# closer-noshow: closers que completaram e NÃO agendaram → webhook.
+# raiox-agendou: trilha audience que AGENDOU Raio X → webhook (com data da call).
+[functions."closer-noshow"]
+  schedule = "*/15 * * * *"
+
+[functions."raiox-agendou"]
+  schedule = "*/15 * * * *"
+
+# closer-agendou: trilha premium que AGENDOU o call dos closers → webhook (stage call_agendada).
+[functions."closer-agendou"]
+  schedule = "*/15 * * * *"
+
+# ----------------------------------------------------------------------------
+# SEGURANÇA: bloqueia o acesso público ao código-fonte das functions e aos
+# arquivos de projeto/config (a raiz é publicada por publish="."). As rotas de
+# função continuam funcionando em /api/* (path no próprio .mjs) — isto só barra
+# o download do SOURCE estático. force=true sobrescreve o serviço de arquivo.
+# ----------------------------------------------------------------------------
+[[redirects]]
+  from = "/netlify/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/node_modules/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/referencia/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/setup.sql"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/package.json"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/package-lock.json"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/README.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+# CORS das funções (mantido aberto p/ o funil; restringir a origem é parte do
+# endurecimento anti-abuso ainda a decidir com o Fabio).
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+
+# Headers de segurança em todas as páginas.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# O painel admin nunca deve poder ser embutido em iframe (anti-clickjacking).
+[[headers]]
+  for = "/dashboard.html"
+  [headers.values]
+    X-Frame-Options = "DENY"

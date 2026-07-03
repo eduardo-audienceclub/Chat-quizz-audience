@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Painel · Diagnóstico Instagram — Core Audience</title>
+<style>
+  :root {
+    --accent: #a155f2; --accent-dark: #7c3aed; --accent-soft: rgba(161, 85, 242, .12);
+    --bg: #f6f7fb; --card: #ffffff; --line: #ececf3;
+    --text: #1d1d27; --text-muted: #6b6b7b; --text-dim: #9a9aaa;
+    --green: #16a34a; --green-soft: #dcfce7; --amber: #d97706; --amber-soft: #fef3c7;
+    --blue: #2563eb; --blue-soft: #dbeafe; --red: #dc2626;
+    --shadow: 0 1px 3px rgba(20, 20, 40, .06), 0 8px 24px rgba(20, 20, 40, .05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  b { font-weight: 700; }
+
+  /* ===== LOGIN GATE ===== */
+  #gate {
+    position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, #f6f7fb, #eef0f8); padding: 20px;
+  }
+  .gate-card {
+    background: var(--card); border-radius: 18px; box-shadow: var(--shadow);
+    padding: 32px 28px; width: 100%; max-width: 360px; text-align: center;
+  }
+  .gate-logo {
+    width: 52px; height: 52px; border-radius: 13px; background: #16161e; color: #fff;
+    display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;
+    font-weight: 800; font-size: 19px; letter-spacing: .02em;
+  }
+  .gate-card h1 { font-size: 18px; margin-bottom: 4px; }
+  .gate-card p { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+  .gate-card input {
+    width: 100%; padding: 13px 15px; border: 1.5px solid var(--line); border-radius: 11px;
+    font-size: 15px; outline: none; transition: border-color .15s; margin-bottom: 12px;
+  }
+  .gate-card input:focus { border-color: var(--accent); }
+  .gate-card button {
+    width: 100%; padding: 13px; border: none; border-radius: 11px; cursor: pointer;
+    background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; transition: filter .15s;
+  }
+  .gate-card button:hover { filter: brightness(1.05); }
+  .gate-err { color: var(--red); font-size: 13px; margin-top: 12px; min-height: 16px; }
+
+  /* ===== APP SHELL ===== */
+  #app { display: none; max-width: 1180px; margin: 0 auto; padding: 22px 20px 60px; }
+  .topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+  .brand { display: flex; align-items: center; gap: 11px; margin-right: auto; }
+  .brand .logo {
+    width: 38px; height: 38px; border-radius: 10px; background: #16161e; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px;
+  }
+  .brand h1 { font-size: 16px; line-height: 1.2; }
+  .brand small { color: var(--text-dim); font-size: 11.5px; font-weight: 500; }
+  .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); }
+  .seg button {
+    border: none; background: transparent; padding: 8px 12px; cursor: pointer; font-size: 12.5px;
+    color: var(--text-muted); font-weight: 600; transition: all .12s;
+  }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .btn {
+    border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 13px;
+    cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--text); box-shadow: var(--shadow);
+    transition: all .12s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent-dark); }
+  .updated { font-size: 11.5px; color: var(--text-dim); width: 100%; margin-top: -8px; }
+
+  /* ===== KPI CARDS ===== */
+  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 13px; margin-bottom: 22px; }
+  .kpi {
+    background: var(--card); border-radius: 15px; padding: 16px 16px 15px; box-shadow: var(--shadow);
+    border: 1px solid var(--line); position: relative; overflow: hidden;
+  }
+  .kpi .k-label { font-size: 11.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 7px; display: flex; align-items: center; gap: 5px; }
+  .kpi .k-num { font-size: 27px; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+  .kpi .k-sub { font-size: 11.5px; color: var(--text-dim); margin-top: 6px; }
+  .kpi.hero { background: linear-gradient(150deg, var(--accent), var(--accent-dark)); border: none; }
+  .kpi.hero .k-label, .kpi.hero .k-num, .kpi.hero .k-sub { color: #fff; }
+  .kpi.hero .k-sub { opacity: .85; }
+  .kpi .k-num.green { color: var(--green); }
+  .kpi .k-num.blue { color: var(--blue); }
+  .kpi .k-num.amber { color: var(--amber); }
+
+  /* ===== SECTIONS / GRID ===== */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .panel { background: var(--card); border-radius: 15px; padding: 18px; box-shadow: var(--shadow); border: 1px solid var(--line); margin-bottom: 16px; }
+  .panel h2 { font-size: 14px; margin-bottom: 3px; }
+  .panel .sub { font-size: 11.5px; color: var(--text-dim); margin-bottom: 15px; }
+  .panel.grid2-item { margin-bottom: 0; }
+
+  /* ===== FUNNEL ===== */
+  .funnel-stage { margin-bottom: 13px; }
+  .fs-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+  .fs-name { font-size: 13px; font-weight: 600; }
+  .fs-vals { font-size: 12px; color: var(--text-muted); }
+  .fs-vals b { color: var(--text); }
+  .fs-track { height: 26px; background: var(--accent-soft); border-radius: 8px; overflow: hidden; }
+  .fs-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); border-radius: 8px; transition: width .5s cubic-bezier(.22,1,.36,1); min-width: 2px; }
+  .fs-drop { font-size: 11px; color: var(--red); margin-top: 3px; }
+
+  /* ===== BAR CHART ===== */
+  .bc-row { display: grid; grid-template-columns: 130px 1fr auto; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .bc-label { font-size: 12.5px; color: var(--text); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bc-track { height: 20px; background: #f1f1f7; border-radius: 6px; overflow: hidden; position: relative; }
+  .bc-fill { height: 100%; background: var(--accent-soft); border-radius: 6px; position: relative; transition: width .5s; min-width: 2px; }
+  .bc-won { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); border-radius: 6px; }
+  .bc-val { font-size: 12px; color: var(--text-muted); font-weight: 600; white-space: nowrap; min-width: 78px; text-align: right; }
+  .bc-val .won { color: var(--accent-dark); }
+  .legend { display: flex; gap: 16px; margin-top: 12px; font-size: 11.5px; color: var(--text-muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; }
+  .empty { color: var(--text-dim); font-size: 12.5px; padding: 8px 0; }
+
+  /* ===== TRILHA (stacked) ===== */
+  .stack { height: 30px; border-radius: 9px; overflow: hidden; display: flex; margin: 6px 0 4px; }
+  .stack > div { height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 700; transition: width .5s; }
+  .seg-prem { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); }
+  .seg-aud { background: linear-gradient(90deg, #2563eb, #1e40af); }
+  .seg-pad { background: #c9cad6; }
+  .trilha-stats { display: flex; gap: 10px; margin-top: 14px; }
+  .ts-card { flex: 1; background: #f7f7fb; border-radius: 11px; padding: 12px; }
+  .ts-card .n { font-size: 21px; font-weight: 800; }
+  .ts-card .l { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  .ts-card.prem .n { color: var(--accent-dark); }
+  .ts-card.aud .n { color: #1e40af; }
+
+  /* ===== TABLES ===== */
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--text-dim); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  td.nome { font-weight: 600; }
+  tr:hover td { background: #fafaff; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+  .pill.parcial { background: #f1f1f7; color: var(--text-muted); }
+  .pill.contato { background: var(--blue-soft); color: var(--blue); }
+  .pill.completo { background: var(--amber-soft); color: var(--amber); }
+  .pill.agendado { background: var(--green-soft); color: var(--green); }
+  .pill.prem { background: var(--accent-soft); color: var(--accent-dark); }
+  .pill.aud { background: #dbeafe; color: #1e40af; }
+  .pill.pad { background: #f1f1f7; color: var(--text-muted); }
+  .tbl-tools { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .tbl-tools input {
+    flex: 1; min-width: 180px; padding: 9px 13px; border: 1.5px solid var(--line); border-radius: 10px;
+    font-size: 13px; outline: none;
+  }
+  .tbl-tools input:focus { border-color: var(--accent); }
+  .muted-cell { color: var(--text-dim); }
+
+  @media (max-width: 920px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .grid2 { grid-template-columns: 1fr; }
+    .bc-row { grid-template-columns: 100px 1fr auto; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <div id="gate">
+    <div class="gate-card">
+      <div class="gate-logo">CA</div>
+      <h1>Painel do Funil</h1>
+      <p>Diagnóstico Instagram · Core Audience</p>
+      <input id="gate-pass" type="password" placeholder="Senha de acesso" autocomplete="current-password" />
+      <button id="gate-btn">Entrar</button>
+      <div class="gate-err" id="gate-err"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="app">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">CA</div>
+        <div>
+          <h1>Painel do Funil</h1>
+          <small>Diagnóstico Instagram · Core Audience</small>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="seg" id="range">
+          <button data-d="0" class="on">Tudo</button>
+          <button data-d="30">30d</button>
+          <button data-d="7">7d</button>
+          <button data-d="1">Hoje</button>
+        </div>
+        <button class="btn" id="btn-refresh">↻ Atualizar</button>
+        <button class="btn" id="btn-csv">⬇ CSV</button>
+        <button class="btn" id="btn-logout">Sair</button>
+      </div>
+      <div class="updated" id="updated"></div>
+    </div>
+
+    <div class="seg" id="tabs" style="margin-bottom:18px;">
+      <button data-tab="funil" class="on">📊 Funil</button>
+      <button data-tab="cal">📅 Agendamentos (Cal)</button>
+    </div>
+
+    <div id="tabFunil">
+    <div class="kpis" id="kpis"></div>
+
+    <div class="panel" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div>
+        <h2>🎯 Priorizar closer (trilha premium)</h2>
+        <div class="sub">Força todos os leads de closers pra um vendedor só. "Automático" volta ao sorteio ponderado.</div>
+      </div>
+      <select id="priorSelect" style="margin-left:auto;padding:10px 13px;border:1.5px solid var(--line);border-radius:10px;font-size:13.5px;font-weight:600;min-width:230px;cursor:pointer;">
+        <option value="">Automático (sorteio)</option>
+      </select>
+      <span class="muted-cell" id="priorStatus" style="min-width:120px;"></span>
+    </div>
+
+    <div class="panel">
+      <h2>Funil de conversão</h2>
+      <div class="sub">Cada etapa conta quem chegou nela <i>ou além</i> — o lead avança de forma acumulada.</div>
+      <div id="funnel"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel grid2-item">
+        <h2>Agendamentos por vendedor</h2>
+        <div class="sub">Reuniões marcadas por closer (trilha médicos)</div>
+        <div id="vendedores"></div>
+      </div>
+      <div class="panel grid2-item">
+        <h2>Trilha de roteamento</h2>
+        <div class="sub">Closers (médico + 50k+) · Raio X (10–50k não-médico) · padrão (&lt;10k)</div>
+        <div id="trilha"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Leads por renda mensal</h2>
+      <div class="sub">Volume por faixa · barra escura = quantos agendaram reunião</div>
+      <div id="renda"></div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--accent-soft)"></i> Leads na faixa</span>
+        <span><i class="dot" style="background:var(--accent-dark)"></i> Agendaram reunião</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Leads por nicho</h2>
+      <div class="sub">Volume por nicho · barra escura = quantos agendaram reunião</div>
+      <div id="nicho"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel grid2-item">
+        <h2>Tamanho do perfil (seguidores)</h2>
+        <div class="sub">Faixa informada / detectada no funil</div>
+        <div id="seguidores"></div>
+      </div>
+      <div class="panel grid2-item">
+        <h2>Maior desafio declarado</h2>
+        <div class="sub">O que o lead diz travar o crescimento</div>
+        <div id="desafio"></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel grid2-item">
+        <h2>Leads por dia</h2>
+        <div class="sub">Entradas no funil (período selecionado)</div>
+        <div id="perday"></div>
+      </div>
+      <div class="panel grid2-item">
+        <h2>Top estados (UF)</h2>
+        <div class="sub">Pelo DDD do WhatsApp</div>
+        <div id="uf"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div>
+          <h2>Origem dos leads (UTM)</h2>
+          <div class="sub">De onde vêm os leads e quais origens mais agendam</div>
+        </div>
+        <div class="seg" id="utmDim">
+          <button data-d="utm_source" class="on">Source</button>
+          <button data-d="utm_campaign">Campanha</button>
+          <button data-d="utm_medium">Medium</button>
+          <button data-d="utm_content">Conteúdo</button>
+        </div>
+      </div>
+      <div class="tbl-wrap"><table id="utmTable"></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>Próximas reuniões</h2>
+      <div class="sub">Agendamentos futuros, do mais próximo ao mais distante</div>
+      <div class="tbl-tools" style="gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+        <select id="upVendor" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;"><option value="">Todos os vendedores</option></select>
+        <select id="upTrilha" style="padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+          <option value="">Todas as trilhas</option>
+          <option value="premium">🎯 Closers</option>
+          <option value="audience">📈 Raio X</option>
+          <option value="padrao">Padrão</option>
+        </select>
+        <span id="upCount" class="muted-cell" style="margin-left:auto;"></span>
+      </div>
+      <div class="tbl-wrap"><table id="upcoming"></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>Todos os leads</h2>
+      <div class="tbl-tools">
+        <input id="search" placeholder="Buscar por nome, @, e-mail ou WhatsApp..." />
+        <div class="seg" id="trilhaFilter">
+          <button data-t="" class="on">Todas</button>
+          <button data-t="premium">🎯 Closers</button>
+          <button data-t="audience">📈 Raio X</button>
+          <button data-t="padrao">Padrão</button>
+        </div>
+        <span class="muted-cell" id="tbl-count"></span>
+      </div>
+      <div class="tbl-wrap"><table id="leads"></table></div>
+    </div>
+    </div><!-- /tabFunil -->
+
+    <div id="tabCal" hidden>
+      <div class="panel" style="padding:12px 16px;">
+        <div class="tbl-tools" style="gap:12px;flex-wrap:wrap;">
+          <div class="seg" id="calScope">
+            <button data-s="" class="on">Todos os eventos</button>
+            <button data-s="funil">Só deste funil</button>
+          </div>
+          <span class="muted-cell">Esta aba conta <b>bookings (slots) no Cal</b> — um call em grupo = 1 booking com vários participantes. O card <b>"Agendaram reunião"</b> do Funil conta <b>pessoas</b>. Além disso, a API do Cal devolve só os <b>50 bookings mais recentes de TODOS os eventos</b> (Raio X, onboarding, closers, webinar…). Por isso <b>não bate 1:1</b> com o Funil. Use <b>"Só deste funil"</b> pra ver só o que veio daqui.</span>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Agendamentos no Cal — por evento</h2>
+        <div class="sub">Espelho direto da agenda do Cal · confirmados vs cancelados</div>
+        <div class="tbl-wrap"><table id="calPorEvento"></table></div>
+      </div>
+      <div class="panel">
+        <h2>Reuniões por data</h2>
+        <div class="sub">Quando os calls (confirmados, do período filtrado) vão acontecer</div>
+        <div id="calPorDia"></div>
+      </div>
+      <div class="panel">
+        <h2>Lista de agendamentos</h2>
+        <div class="tbl-tools">
+          <span id="calCount" class="muted-cell"></span>
+          <button class="btn" id="calRefresh" style="margin-left:auto;">↻ Atualizar do Cal</button>
+        </div>
+        <div class="tbl-wrap"><table id="calTable"></table></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+'use strict';
+const API = '/api/metrics';
+const TKEY = 'core_dash_token';
+
+// ---- helpers ----
+const $ = (s) => document.querySelector(s);
+const el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e; };
+const nf = (n) => Number(n || 0).toLocaleString('pt-BR');
+const pct = (a, b) => b ? Math.round((a / b) * 100) : 0;
+function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+// faixas na ordem certa (espelham as constantes do funil)
+const ORD_RENDA = ['Até R$5 mil/mês', 'R$5 a 10 mil/mês', 'R$10 a 20 mil/mês', 'R$20 a 50 mil/mês', 'Acima de R$50 mil/mês'];
+const ORD_SEG = ['Menos de 1 mil', '1 a 5 mil', '5 a 20 mil', '20 a 50 mil', '50 a 100 mil', 'Mais de 100 mil'];
+const STATUS_ORD = { parcial: 1, contato: 2, completo: 3, agendado: 4 };
+
+let ALL = [];      // todos os leads carregados
+let RANGE = 0;     // 0 = tudo; senão nº de dias
+
+// ================= LOGIN =================
+function showGate(msg) {
+  $('#gate').style.display = 'flex';
+  $('#app').style.display = 'none';
+  $('#gate-err').textContent = msg || '';
+}
+async function tryToken(token) {
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-dash-token': token },
+    body: JSON.stringify({ token }),
+  });
+  if (res.status === 401) throw new Error('Senha incorreta.');
+  if (res.status === 503) throw new Error('Painel ainda não configurado no servidor (DASHBOARD_TOKEN).');
+  if (!res.ok) throw new Error('Erro ao carregar (' + res.status + ').');
+  const data = await res.json();
+  return data.leads || [];
+}
+async function doLogin(token) {
+  try {
+    ALL = await tryToken(token);
+    localStorage.setItem(TKEY, token);
+    $('#gate').style.display = 'none';
+    $('#app').style.display = 'block';
+    render();
+    carregarPrioridade();
+  } catch (e) {
+    localStorage.removeItem(TKEY);
+    showGate(e.message);
+  }
+}
+
+// ===== Priorizar closer =====
+async function carregarPrioridade() {
+  try {
+    const r = await fetch('/api/config', { headers: { 'x-dash-token': localStorage.getItem(TKEY) || '' } });
+    if (!r.ok) return;
+    const d = await r.json();
+    const sel = $('#priorSelect'); clear(sel);
+    const auto = document.createElement('option'); auto.value = ''; auto.textContent = 'Automático (sorteio)'; sel.appendChild(auto);
+    (d.vendedores || []).forEach((v) => { const o = document.createElement('option'); o.value = String(v.eventTypeId); o.textContent = v.nome; sel.appendChild(o); });
+    sel.value = d.forced || '';
+    $('#priorStatus').textContent = d.forced ? '● prioridade ativa' : '';
+    $('#priorStatus').style.color = d.forced ? 'var(--accent-dark)' : '';
+  } catch (e) {}
+}
+$('#priorSelect').addEventListener('change', async (e) => {
+  const value = e.target.value;
+  const label = e.target.selectedOptions[0].textContent;
+  $('#priorStatus').textContent = 'salvando…'; $('#priorStatus').style.color = '';
+  try {
+    const r = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-dash-token': localStorage.getItem(TKEY) || '' },
+      body: JSON.stringify({ value }),
+    });
+    if (r.ok) {
+      $('#priorStatus').textContent = value ? '✓ priorizando ' + label : '✓ sorteio automático';
+      $('#priorStatus').style.color = value ? 'var(--accent-dark)' : 'var(--green)';
+    } else { $('#priorStatus').textContent = 'erro ao salvar'; }
+  } catch { $('#priorStatus').textContent = 'erro ao salvar'; }
+});
+$('#gate-btn').onclick = () => {
+  const p = $('#gate-pass').value.trim();
+  if (p) doLogin(p);
+};
+$('#gate-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#gate-btn').click(); });
+
+async function refresh() {
+  const token = localStorage.getItem(TKEY);
+  if (!token) return showGate();
+  try {
+    ALL = await tryToken(token);
+    render();
+  } catch (e) { showGate(e.message); }
+}
+$('#btn-refresh').onclick = refresh;
+$('#btn-logout').onclick = () => { localStorage.removeItem(TKEY); showGate(); };
+
+// range selector
+$('#range').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...$('#range').children].forEach((x) => x.classList.remove('on'));
+  b.classList.add('on');
+  RANGE = Number(b.dataset.d);
+  render();
+  if (CAL_BOOKINGS !== null) renderCal();   // o filtro de data também vale pra aba Cal
+});
+
+// ================= AGREGAÇÃO + RENDER =================
+// data-calendário de Brasília (yyyy-mm-dd) — base de todo o filtro/agrupamento por data
+const fmtDiaBRT = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+const diaBRT = (d) => fmtDiaBRT.format(d);
+const inicioHojeBRT = () => new Date(diaBRT(new Date()) + 'T00:00:00-03:00').getTime();
+function inRange(lead) {
+  if (!RANGE) return true;
+  const created = new Date(lead.created_at).getTime();
+  // Hoje = desde 00:00 de hoje (Brasília); 7d/30d = últimos N dias-calendário incluindo hoje.
+  const cutoff = inicioHojeBRT() - (RANGE - 1) * 864e5;
+  return created >= cutoff;
+}
+// filtro de data da aba Cal: por DATA DO AGENDAMENTO (created), "últimos N dias"
+// — igual ao funil (Hoje = agendados hoje, 7d = agendados nos últimos 7 dias).
+function inRangeCal(b) {
+  if (!RANGE) return true;
+  const t = b.created ? new Date(b.created).getTime() : 0;
+  if (!t) return false;
+  const cutoff = inicioHojeBRT() - (RANGE - 1) * 864e5;
+  return t >= cutoff;
+}
+function countBy(rows, keyFn) {
+  const m = new Map();
+  rows.forEach((r) => { const k = keyFn(r); if (k == null || k === '') return; m.set(k, (m.get(k) || 0) + 1); });
+  return m;
+}
+// "Agendaram reunião" = PESSOAS distintas com booking confirmado.
+// Dedupa por e-mail (quem reiniciou o funil vira 1), mas mantém cada pessoa de um
+// call EM GRUPO (vários leads no mesmo booking_uid de seats) como 1 agendamento.
+// Exige booking_uid: linha sem booking confirmado (Cal falhou) não entra na conta.
+const pessoasAgendadas = (rows) => new Set(
+  rows.filter((r) => r.agendado && r.booking_uid)
+      .map((r) => ((r.email || '').trim().toLowerCase()) || ('uid:' + r.booking_uid)),
+).size;
+
+function render() {
+  const rows = ALL.filter(inRange);
+  $('#updated').textContent = 'Atualizado ' + new Date().toLocaleString('pt-BR') +
+    ' · ' + nf(ALL.length) + ' leads no total' + (RANGE ? ' · exibindo ' + nf(rows.length) + ' no período' : '');
+
+  renderKpis(rows);
+  renderFunnel(rows);
+  renderVendedores(rows);
+  renderTrilha(rows);
+  renderRenda(rows);
+  renderNicho(rows);
+  renderSeguidores(rows);
+  renderDesafio(rows);
+  renderPerDay(rows);
+  renderUF(rows);
+  renderUTM(rows);
+  renderUpcoming();
+  renderLeads(rows);
+}
+
+function kpiCard(label, num, sub, opts = {}) {
+  const c = el('div', 'kpi' + (opts.hero ? ' hero' : ''));
+  const l = el('div', 'k-label'); l.textContent = label;
+  const n = el('div', 'k-num' + (opts.color ? ' ' + opts.color : '')); n.textContent = num;
+  c.append(l, n);
+  if (sub) { const s = el('div', 'k-sub'); s.textContent = sub; c.appendChild(s); }
+  return c;
+}
+function renderKpis(rows) {
+  const box = $('#kpis'); clear(box);
+  const total = rows.length;
+  const reached = (s) => rows.filter((r) => (STATUS_ORD[r.status] || 1) >= STATUS_ORD[s] || (s === 'agendado' && r.agendado)).length;
+  const completos = reached('completo');
+  const agendados = pessoasAgendadas(rows);                                    // pessoas distintas c/ booking confirmado
+  const agendRows = rows.filter((r) => r.agendado).length;                     // linhas marcadas (inclui restart/duplicata)
+  const semBooking = rows.filter((r) => r.agendado && !r.booking_uid).length;  // marcou mas o Cal não confirmou
+  const qualificados = rows.filter((r) => r.qualificado === true).length;
+  const premium = rows.filter((r) => r.call_track === 'premium').length;
+  const premAgend = pessoasAgendadas(rows.filter((r) => r.call_track === 'premium'));
+  const futuras = pessoasAgendadas(rows.filter((r) => r.agendamento_em && new Date(r.agendamento_em).getTime() > Date.now()));
+
+  const agendSub = pct(agendados, completos) + '% dos que completaram · pessoas (dedupe por e-mail)'
+    + (agendRows > agendados ? ' · ' + nf(agendRows - agendados) + ' duplicadas ignoradas' : '');
+
+  box.append(
+    kpiCard('Total de leads', nf(total), 'entraram no funil'),
+    kpiCard('🗓️ Agendaram reunião', nf(agendados), agendSub, { hero: true }),
+    kpiCard('Completaram o funil', nf(completos), pct(completos, total) + '% do total', { color: 'blue' }),
+    kpiCard('Qualificados (score ≥ 6)', nf(qualificados), pct(qualificados, completos) + '% dos completos'),
+    kpiCard('🎯 Premium / closers', nf(premium), premAgend + ' agendaram', { color: 'green' }),
+    kpiCard('Reuniões futuras', nf(futuras), 'a partir de agora'),
+  );
+  // monitor do bug latente: lead marcou agendado mas sem booking_uid (Cal falhou / modo local)
+  if (semBooking) box.append(kpiCard('⚠️ Sem booking confirmado', nf(semBooking), 'marcaram, mas o Cal não registrou — conferir manualmente', { color: 'amber' }));
+}
+
+function renderFunnel(rows) {
+  const box = $('#funnel'); clear(box);
+  const total = rows.length || 1;
+  const reached = (s) => rows.filter((r) => (STATUS_ORD[r.status] || 1) >= STATUS_ORD[s] || (s === 'agendado' && r.agendado)).length;
+  const stages = [
+    { name: '1 · Iniciaram (nome)', n: reached('parcial') },
+    { name: '2 · Deixaram contato (WhatsApp/e-mail)', n: reached('contato') },
+    { name: '3 · Completaram (renda)', n: reached('completo') },
+    { name: '4 · Agendaram reunião', n: pessoasAgendadas(rows) },
+  ];
+  stages.forEach((st, i) => {
+    const wrap = el('div', 'funnel-stage');
+    const head = el('div', 'fs-head');
+    const nm = el('div', 'fs-name'); nm.textContent = st.name;
+    const vl = el('div', 'fs-vals');
+    const strong = el('b'); strong.textContent = nf(st.n);
+    vl.append(strong, document.createTextNode(' · ' + pct(st.n, total) + '% do topo'));
+    head.append(nm, vl);
+    const track = el('div', 'fs-track');
+    const fill = el('div', 'fs-fill'); fill.style.width = pct(st.n, total) + '%';
+    track.appendChild(fill);
+    wrap.append(head, track);
+    if (i > 0) {
+      const prev = stages[i - 1].n;
+      const drop = prev - st.n;
+      if (prev > 0) {
+        const d = el('div', 'fs-drop');
+        d.textContent = '↓ ' + nf(drop) + ' saíram (' + pct(drop, prev) + '% de queda nesta etapa)';
+        wrap.appendChild(d);
+      }
+    }
+    box.appendChild(wrap);
+  });
+}
+
+// barra horizontal genérica; item: {label, value, won}
+function barChart(box, items, opts = {}) {
+  clear(box);
+  const live = items.filter((i) => i.value > 0);
+  if (!live.length) { const e = el('div', 'empty'); e.textContent = 'Sem dados no período.'; box.appendChild(e); return; }
+  const max = Math.max(...items.map((i) => i.value));
+  items.forEach((it) => {
+    const row = el('div', 'bc-row');
+    const lab = el('div', 'bc-label'); lab.textContent = it.label; lab.title = it.label;
+    const track = el('div', 'bc-track');
+    const fill = el('div', 'bc-fill'); fill.style.width = (it.value / max * 100) + '%';
+    if (it.won != null && opts.won) {
+      const won = el('div', 'bc-won'); won.style.width = (it.value ? (it.won / it.value * 100) : 0) + '%';
+      fill.appendChild(won);
+    }
+    track.appendChild(fill);
+    const val = el('div', 'bc-val');
+    if (it.won != null && opts.won) {
+      val.appendChild(document.createTextNode(nf(it.value) + ' · '));
+      const w = el('span', 'won'); w.textContent = nf(it.won) + ' agend.';
+      val.appendChild(w);
+    } else {
+      val.textContent = nf(it.value);
+    }
+    row.append(lab, track, val);
+    box.appendChild(row);
+  });
+}
+
+function renderVendedores(rows) {
+  const ag = rows.filter((r) => r.agendado && r.vendedor);
+  const m = countBy(ag, (r) => r.vendedor);
+  const items = [...m.entries()].sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ label, value }));
+  barChart($('#vendedores'), items);
+}
+
+function renderTrilha(rows) {
+  const box = $('#trilha'); clear(box);
+  const cnt = (t) => rows.filter((r) => r.call_track === t).length;
+  const prem = cnt('premium'), aud = cnt('audience'), pad = cnt('padrao');
+  const tot = prem + aud + pad;
+  if (!tot) { const e = el('div', 'empty'); e.textContent = 'Nenhum lead chegou à etapa de agendamento ainda.'; box.appendChild(e); return; }
+  const stack = el('div', 'stack');
+  const seg = (cls, n) => { const s = el('div', cls); s.style.width = (n / tot * 100) + '%'; if (n) s.textContent = pct(n, tot) + '%'; return s; };
+  stack.append(seg('seg-prem', prem), seg('seg-aud', aud), seg('seg-pad', pad));
+  const stats = el('div', 'trilha-stats');
+  const mk = (cls, n, l) => { const c = el('div', 'ts-card' + cls); const nn = el('div', 'n'); nn.textContent = nf(n); const ll = el('div', 'l'); ll.textContent = l; c.append(nn, ll); return c; };
+  stats.append(
+    mk(' prem', prem, '🎯 Closers (médico + 50k+)'),
+    mk(' aud', aud, '📈 Raio X (10–50k não-médico)'),
+    mk('', pad, 'Padrão (<10k)'),
+  );
+  box.append(stack, stats);
+}
+
+function renderRenda(rows) {
+  const items = ORD_RENDA.map((label) => {
+    const inFaixa = rows.filter((r) => r.renda === label);
+    return { label: label.replace('/mês', ''), value: inFaixa.length, won: inFaixa.filter((r) => r.agendado).length };
+  });
+  barChart($('#renda'), items, { won: true });
+}
+
+function renderNicho(rows) {
+  const map = new Map();
+  rows.forEach((r) => {
+    const k = r.nicho || r.nicho_detectado; if (!k) return;
+    if (!map.has(k)) map.set(k, { total: 0, won: 0 });
+    const o = map.get(k); o.total++; if (r.agendado) o.won++;
+  });
+  const items = [...map.entries()].sort((a, b) => b[1].total - a[1].total)
+    .map(([label, o]) => ({ label, value: o.total, won: o.won }));
+  barChart($('#nicho'), items, { won: true });
+}
+
+function renderSeguidores(rows) {
+  const items = ORD_SEG.map((label) => ({ label, value: rows.filter((r) => r.seguidores === label).length }));
+  barChart($('#seguidores'), items);
+}
+
+function renderDesafio(rows) {
+  const m = countBy(rows, (r) => r.dificuldade);
+  const items = [...m.entries()].sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ label, value }));
+  barChart($('#desafio'), items);
+}
+
+function renderUF(rows) {
+  const m = countBy(rows, (r) => (r.uf || '').toUpperCase());
+  const items = [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([label, value]) => ({ label, value }));
+  barChart($('#uf'), items);
+}
+
+let UTM_DIM = 'utm_source';
+function renderUTM(rows) {
+  const t = $('#utmTable'); clear(t);
+  const map = new Map();
+  rows.forEach((r) => {
+    const k = String(r[UTM_DIM] || '').trim() || '(direto / sem UTM)';
+    if (!map.has(k)) map.set(k, { leads: 0, qual: 0, agend: 0 });
+    const o = map.get(k); o.leads++;
+    if (r.qualificado === true) o.qual++;
+    if (r.agendado) o.agend++;
+  });
+  const linhas = [...map.entries()].sort((a, b) => b[1].agend - a[1].agend || b[1].leads - a[1].leads);
+  t.appendChild(tableHead(['Origem (' + UTM_DIM.replace('utm_', '') + ')', 'Leads', 'Qualif.', 'Agendaram', 'Taxa agend.']));
+  const tb = el('tbody');
+  if (!linhas.length) { const tr = el('tr'); const c = td('Sem dados no período.'); c.colSpan = 5; c.className = 'muted-cell'; tr.appendChild(c); tb.appendChild(tr); }
+  linhas.forEach(([k, o]) => {
+    const tr = el('tr');
+    tr.append(td(k, 'nome'), td(nf(o.leads)), td(nf(o.qual)), td(nf(o.agend)), td(pct(o.agend, o.leads) + '%'));
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+}
+
+function renderPerDay(rows) {
+  const days = RANGE && RANGE <= 30 ? RANGE : 30;
+  const ancora = new Date(diaBRT(new Date()) + 'T12:00:00-03:00').getTime();  // meio-dia BRT de hoje
+  const buckets = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const key = diaBRT(new Date(ancora - i * 864e5));   // dia BRT (yyyy-mm-dd)
+    buckets.push({ key, label: key.slice(8, 10) + '/' + key.slice(5, 7), value: 0 });
+  }
+  const idx = new Map(buckets.map((b, i) => [b.key, i]));
+  rows.forEach((r) => { const k = diaBRT(new Date(r.created_at)); if (idx.has(k)) buckets[idx.get(k)].value++; });
+  barChart($('#perday'), buckets.map((b) => ({ label: b.label, value: b.value })));
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' +
+         d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+function statusPill(s) {
+  const p = el('span', 'pill ' + (s || 'parcial')); p.textContent = s || 'parcial'; return p;
+}
+
+function tableHead(cols) { const tr = el('tr'); cols.forEach((c) => { const th = el('th'); th.textContent = c; tr.appendChild(th); }); const thead = el('thead'); thead.appendChild(tr); return thead; }
+function td(text, cls) { const c = el('td', cls); if (text instanceof Node) c.appendChild(text); else c.textContent = (text == null || text === '') ? '—' : String(text); return c; }
+
+let UP_VENDOR = '';
+let UP_TRILHA = '';
+function popularUpVendor(list) {
+  const sel = $('#upVendor');
+  const vendors = [...new Set(list.map((r) => r.vendedor).filter(Boolean))].sort();
+  const want = vendors.join('|');
+  if (sel.dataset.opts === want) return;     // lista não mudou: preserva a seleção atual
+  sel.dataset.opts = want;
+  const atual = UP_VENDOR;
+  clear(sel);
+  const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Todos os vendedores'; sel.appendChild(o0);
+  vendors.forEach((v) => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
+  UP_VENDOR = vendors.includes(atual) ? atual : '';
+  sel.value = UP_VENDOR;
+}
+function renderUpcoming() {
+  const t = $('#upcoming'); clear(t);
+  const todas = ALL.filter((r) => inRange(r) && r.agendado && r.agendamento_em && new Date(r.agendamento_em).getTime() > Date.now())
+    .sort((a, b) => new Date(a.agendamento_em) - new Date(b.agendamento_em));
+  popularUpVendor(todas);
+  let up = todas;
+  if (UP_VENDOR) up = up.filter((r) => r.vendedor === UP_VENDOR);
+  if (UP_TRILHA) up = up.filter((r) => r.call_track === UP_TRILHA);
+  const filtrando = UP_VENDOR || UP_TRILHA;
+  $('#upCount').textContent = filtrando ? nf(up.length) + ' de ' + nf(todas.length) : nf(todas.length) + ' reunião(ões)';
+  t.appendChild(tableHead(['Quando', 'Lead', 'WhatsApp', '@Instagram', 'Vendedor', 'Trilha']));
+  const tb = el('tbody');
+  if (!up.length) { const tr = el('tr'); const c = td(filtrando ? 'Nenhuma reunião futura com esse filtro.' : 'Nenhuma reunião futura agendada.'); c.colSpan = 6; c.className = 'muted-cell'; tr.appendChild(c); tb.appendChild(tr); }
+  up.forEach((r) => {
+    const tr = el('tr');
+    tr.append(
+      td(fmtDateTime(r.agendamento_em)),
+      td(r.nome, 'nome'),
+      td(r.whatsapp),
+      td(r.instagram ? '@' + r.instagram : ''),
+      td(r.vendedor),
+      td(trilhaPill(r.call_track)),
+    );
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+}
+function trilhaPill(t) {
+  if (t === 'premium') { const p = el('span', 'pill prem'); p.textContent = '🎯 Closers'; return p; }
+  if (t === 'audience') { const p = el('span', 'pill aud'); p.textContent = '📈 Raio X'; return p; }
+  if (t === 'padrao') { const p = el('span', 'pill pad'); p.textContent = 'Padrão'; return p; }
+  return document.createTextNode('—');
+}
+
+let LEADS_VIEW = [];
+let TRILHA_FILTER = '';
+function renderLeads(rows) {
+  LEADS_VIEW = [...rows].sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+  drawLeads();
+}
+function drawLeads() {
+  const q = ($('#search').value || '').trim().toLowerCase();
+  let data = LEADS_VIEW;
+  if (TRILHA_FILTER) data = data.filter((r) => r.call_track === TRILHA_FILTER);
+  if (q) data = data.filter((r) => [r.nome, r.email, r.instagram, r.whatsapp].some((v) => String(v || '').toLowerCase().includes(q)));
+  $('#tbl-count').textContent = nf(data.length) + ' lead(s)';
+  const t = $('#leads'); clear(t);
+  t.appendChild(tableHead(['Entrou', 'Status', 'Nome', 'WhatsApp', 'E-mail', '@Instagram', 'Nicho', 'Renda', 'Score', 'Seguidores', 'Agendou', 'Trilha', 'Vendedor', 'Origem (UTM)']));
+  const tb = el('tbody');
+  data.slice(0, 500).forEach((r) => {
+    const tr = el('tr');
+    tr.append(
+      td(fmtDateTime(r.created_at)),
+      td(statusPill(r.status)),
+      td(r.nome, 'nome'),
+      td(r.whatsapp),
+      td(r.email),
+      td(r.instagram ? '@' + r.instagram : ''),
+      td(r.nicho || r.nicho_detectado),
+      td((r.renda || '').replace('/mês', '')),
+      td(r.lead_score != null ? r.lead_score : ''),
+      td(r.ig_followers != null ? nf(r.ig_followers) : (r.seguidores || '')),
+      td(r.agendado ? '✅' : '—'),
+      td(trilhaPill(r.call_track)),
+      td(r.vendedor),
+      td(utmCell(r)),
+    );
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+  if (data.length > 500) {
+    const tr = el('tr'); const c = td('Mostrando os 500 mais recentes de ' + nf(data.length) + '. Refine a busca.'); c.colSpan = 14; c.className = 'muted-cell'; tr.appendChild(c); tb.appendChild(tr);
+  }
+}
+function utmCell(r) {
+  const s = String(r.utm_source || '').trim();
+  const span = el('span');
+  span.textContent = s || '(direto)';
+  if (!s) span.className = 'muted-cell';
+  const partes = [r.utm_source, r.utm_medium, r.utm_campaign, r.utm_content].filter(Boolean);
+  if (partes.length) span.title = partes.join(' / ');     // detalhe completo no hover
+  return span;
+}
+$('#search').addEventListener('input', drawLeads);
+$('#trilhaFilter').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...$('#trilhaFilter').children].forEach((x) => x.classList.remove('on'));
+  b.classList.add('on');
+  TRILHA_FILTER = b.dataset.t || '';
+  drawLeads();
+});
+$('#utmDim').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...$('#utmDim').children].forEach((x) => x.classList.remove('on'));
+  b.classList.add('on');
+  UTM_DIM = b.dataset.d;
+  renderUTM(ALL.filter(inRange));
+});
+
+// ================= CSV =================
+function csvCell(v) { const s = (v == null ? '' : String(v)).replace(/"/g, '""'); return '"' + s + '"'; }
+$('#btn-csv').onclick = () => {
+  const rows = ALL.filter(inRange);
+  const cols = ['created_at', 'updated_at', 'status', 'nome', 'email', 'whatsapp', 'uf', 'instagram',
+    'nicho', 'nicho_detectado', 'seguidores', 'ig_followers', 'dificuldade', 'renda', 'lead_score',
+    'qualificado', 'call_track', 'vendedor', 'agendado', 'agendamento_em', 'reel_views', 'reel_likes',
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'referrer'];
+  const head = cols.join(',');
+  const body = rows.map((r) => cols.map((c) => csvCell(r[c])).join(',')).join('\n');
+  const blob = new Blob(['﻿' + head + '\n' + body], { type: 'text/csv;charset=utf-8;' });
+  const a = el('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'leads-diagnostico-instagram.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+};
+
+// ================= ABA AGENDAMENTOS (CAL) =================
+let CAL_BOOKINGS = null;
+let CAL_SCOPE = '';   // '' = todos os eventos; 'funil' = só bookings deste funil (uid presente nos leads)
+$('#tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...$('#tabs').children].forEach((x) => x.classList.remove('on'));
+  b.classList.add('on');
+  const tab = b.dataset.tab;
+  $('#tabFunil').hidden = tab !== 'funil';
+  $('#tabCal').hidden = tab !== 'cal';
+  if (tab === 'cal' && CAL_BOOKINGS === null) carregarCal();
+});
+$('#calRefresh').onclick = () => carregarCal();
+$('#calScope').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...$('#calScope').children].forEach((x) => x.classList.remove('on'));
+  b.classList.add('on');
+  CAL_SCOPE = b.dataset.s || '';
+  if (CAL_BOOKINGS !== null) renderCal();
+});
+$('#upVendor').addEventListener('change', (e) => { UP_VENDOR = e.target.value; renderUpcoming(); });
+$('#upTrilha').addEventListener('change', (e) => { UP_TRILHA = e.target.value; renderUpcoming(); });
+
+async function carregarCal() {
+  $('#calCount').textContent = 'carregando do Cal…';
+  try {
+    const r = await fetch('/api/cal-bookings', { headers: { 'x-dash-token': localStorage.getItem(TKEY) || '' } });
+    if (!r.ok) { $('#calCount').textContent = 'erro ao buscar no Cal (' + r.status + ')'; return; }
+    const d = await r.json();
+    CAL_BOOKINGS = d.bookings || [];
+    renderCal();
+  } catch (e) { $('#calCount').textContent = 'erro ao buscar no Cal'; }
+}
+
+function renderCal() {
+  let bk = (CAL_BOOKINGS || []).filter(inRangeCal);
+  if (CAL_SCOPE === 'funil') {
+    const funilUids = new Set(ALL.filter((r) => r.booking_uid).map((r) => r.booking_uid));
+    bk = bk.filter((b) => funilUids.has(b.uid));
+  }
+  const ativos = bk.filter((b) => b.status !== 'cancelled');
+  const janela = RANGE ? (RANGE === 1 ? ' · agendados hoje' : ' · agendados nos últimos ' + RANGE + ' dias') : '';
+  const escopo = CAL_SCOPE === 'funil' ? ' · só deste funil' : ' · todos os eventos';
+  $('#calCount').textContent = nf(bk.length) + ' bookings · ' + nf(ativos.length) + ' confirmados · ' + nf(bk.length - ativos.length) + ' cancelados' + escopo + janela;
+
+  // por evento
+  const ev = new Map();
+  bk.forEach((b) => {
+    const k = b.evento || '(sem nome)';
+    if (!ev.has(k)) ev.set(k, { conf: 0, canc: 0 });
+    const o = ev.get(k); if (b.status === 'cancelled') o.canc++; else o.conf++;
+  });
+  const evRows = [...ev.entries()].sort((a, b) => b[1].conf - a[1].conf);
+  const te = $('#calPorEvento'); clear(te);
+  te.appendChild(tableHead(['Evento', 'Confirmados', 'Cancelados', 'Total']));
+  const teb = el('tbody');
+  if (!evRows.length) { const tr = el('tr'); const c = td('Sem agendamentos.'); c.colSpan = 4; c.className = 'muted-cell'; tr.appendChild(c); teb.appendChild(tr); }
+  evRows.forEach(([k, o]) => { const tr = el('tr'); tr.append(td(k, 'nome'), td(nf(o.conf)), td(o.canc ? nf(o.canc) : '—'), td(nf(o.conf + o.canc))); teb.appendChild(tr); });
+  te.appendChild(teb);
+
+  // por dia (confirmados), fuso de Brasília
+  const dia = new Map();
+  ativos.forEach((b) => { if (!b.start) return; const k = diaBRT(new Date(b.start)); dia.set(k, (dia.get(k) || 0) + 1); });
+  const diaItems = [...dia.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([k, v]) => ({ label: k.slice(8, 10) + '/' + k.slice(5, 7), value: v }));
+  barChart($('#calPorDia'), diaItems);
+
+  // lista (mais próximo/recente primeiro)
+  const t = $('#calTable'); clear(t);
+  t.appendChild(tableHead(['Evento', 'Data', 'Hora', 'Participante', 'Status']));
+  const tb = el('tbody');
+  [...bk].sort((a, b) => new Date(b.start) - new Date(a.start)).slice(0, 200).forEach((b) => {
+    const dt = b.start ? new Date(b.start) : null;
+    const stp = el('span', 'pill ' + (b.status === 'cancelled' ? 'pad' : 'agendado')); stp.textContent = b.status || '—';
+    const tr = el('tr');
+    tr.append(
+      td(b.evento, 'nome'),
+      td(dt ? dt.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' }) : '—'),
+      td(dt ? dt.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) : '—'),
+      td(b.attendee + (b.attendeesCount > 1 ? ' +' + (b.attendeesCount - 1) : '')),
+      td(stp),
+    );
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+}
+
+// ================= BOOT =================
+(function boot() {
+  const saved = localStorage.getItem(TKEY);
+  if (saved) doLogin(saved); else showGate();
+})();
+</script>
+</body>
+</html>

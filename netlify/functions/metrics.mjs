@@ -1,0 +1,115 @@
+/**
+ * Leitura agregável dos leads pro dashboard administrativo.
+ *
+ * Por que existe: a tabela diag_instagram_leads tem RLS write-only (a anon
+ * só insere/atualiza). Logo, NINGUÉM lê do front — a leitura passa por aqui,
+ * com a service_role guardada como env de backend, e protegida por um token.
+ *
+ * Segurança:
+ *   - Exige DASHBOARD_TOKEN no env. Sem ele, responde 503 (nunca abre os dados).
+ *   - O cliente manda o token no header `x-dash-token` (ou no body.token).
+ *     Comparação de tempo ~constante pra não vazar o tamanho por timing.
+ *   - Só GET de colunas selecionadas (sem reel_transcript / bio / foto crua).
+ *
+ * Env:
+ *   DASHBOARD_TOKEN       — senha de acesso ao painel (defina no Netlify).
+ *   SUPABASE_DIAG_SERVICE — service_role do projeto dedicado.
+ *   SUPABASE_DIAG_URL     — URL do projeto dedicado.
+ */
+const SUPABASE_URL = (process.env.SUPABASE_DIAG_URL || 'https://aktktxizmpwckvxbdjzf.supabase.co').replace(/\/+$/, '');
+const TABLE = 'diag_instagram_leads';
+
+// colunas que o dashboard precisa (PII fica protegida pelo token; texto longo fica de fora)
+const COLS = [
+  'lead_ref', 'status', 'nome', 'email', 'whatsapp', 'uf',
+  'instagram', 'nicho', 'nicho_detectado', 'seguidores', 'dificuldade',
+  'renda', 'lead_score', 'qualificado', 'call_track', 'vendedor',
+  'agendado', 'agendamento_em', 'booking_uid',
+  'ig_followers', 'ig_posts', 'ig_verificado', 'ig_categoria',
+  'reel_views', 'reel_likes', 'reel_comments',
+  'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'referrer',
+  'created_at', 'updated_at',
+].join(',');
+
+export default async (req) => {
+  if (req.method === 'OPTIONS') return new Response('', { headers: cors() });
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+
+  const EXPECTED = process.env.DASHBOARD_TOKEN;
+  if (!EXPECTED) return json({ error: 'DASHBOARD_TOKEN not configured' }, 503);
+
+  const KEY = process.env.SUPABASE_DIAG_SERVICE;
+  if (!KEY) return json({ error: 'SUPABASE_DIAG_SERVICE not configured' }, 500);
+
+  try {
+    let body = {};
+    try { body = await req.json(); } catch { /* sem body */ }
+    const sent = req.headers.get('x-dash-token') || body.token || '';
+    if (!safeEqual(String(sent), String(EXPECTED))) {
+      return json({ error: 'unauthorized' }, 401);
+    }
+
+    // paginação: PostgREST devolve no máx. ~1000 linhas por página (Range)
+    const PAGE = 1000;
+    const MAX_PAGES = 50; // teto de segurança (50k leads)
+    let rows = [];
+    let total = null;
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const from = page * PAGE;
+      const to = from + PAGE - 1;
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/${TABLE}?select=${COLS}&order=created_at.desc`,
+        {
+          headers: {
+            apikey: KEY,
+            Authorization: `Bearer ${KEY}`,
+            Range: `${from}-${to}`,
+            'Range-Unit': 'items',
+            Prefer: 'count=exact',
+          },
+        }
+      );
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('metrics read error:', res.status, errText.slice(0, 200));
+        return json({ error: 'DB read failed' }, 500);
+      }
+      const batch = await res.json();
+      rows = rows.concat(batch);
+      const cr = res.headers.get('content-range') || '';
+      const m = cr.match(/\/(\d+)$/);
+      if (m) total = Number(m[1]);
+      if (batch.length < PAGE) break; // última página
+    }
+
+    return json({ ok: true, total: total ?? rows.length, count: rows.length, leads: rows });
+  } catch (err) {
+    console.error('metrics error:', err);
+    return json({ error: err.message }, 500);
+  }
+};
+
+// comparação de tempo ~constante (evita vazar tamanho/prefixo por timing)
+function safeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function cors() {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, x-dash-token',
+  };
+}
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...cors() },
+  });
+}
+
+export const config = { path: '/api/metrics' };
