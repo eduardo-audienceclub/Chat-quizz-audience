@@ -18,7 +18,7 @@
  *     alto no log — melhor que perder o lead inteiro em silêncio.
  *   SUPABASE_DIAG_URL — URL do projeto dedicado.
  */
-const SUPABASE_URL = (process.env.SUPABASE_DIAG_URL || 'https://aktktxizmpwckvxbdjzf.supabase.co').replace(/\/+$/, '');
+const SUPABASE_URL = (process.env.SUPABASE_DIAG_URL || 'https://fmjmulchpcxrprvjifko.supabase.co').replace(/\/+$/, '');
 const TABLE = 'diag_instagram_leads';
 
 export default async (req) => {
@@ -47,12 +47,16 @@ export default async (req) => {
       email: txt(b.email, 200).toLowerCase(),
       whatsapp: e164,
       uf: txt(b.uf, 4),
-      instagram: txt(b.instagram, 40).replace(/^@/, '').toLowerCase(),
-      nicho: txt(b.nicho, 60),
-      nicho_detectado: txt(b.nicho_detectado, 60),
-      seguidores: txt(b.seguidores, 30),
-      dificuldade: txt(b.dificuldade, 60),
-      renda: txt(b.faturamento, 30),
+      // respostas do quiz SUAVIS
+      idade: txt(b.idade, 40),
+      sentimento: txt(b.sentimento, 80),
+      area_afetada: txt(b.area_afetada, 80),
+      culpa: txt(b.culpa, 60),
+      ajuda_profissional: txt(b.ajuda_profissional, 80),
+      disposicao: txt(b.disposicao, 100),
+      urgencia: txt(b.urgencia, 100),
+      orcamento: txt(b.orcamento, 100),
+      consciencia: txt(b.consciencia, 10),
       lead_score: num(b.score),
       qualificado: typeof b.qualificado === 'boolean' ? b.qualificado : null,
       call_track: txt(b.call_track, 12),

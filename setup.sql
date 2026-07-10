@@ -90,3 +90,25 @@ create trigger diag_touch before update on public.diag_instagram_leads
 create index if not exists diag_leads_created_idx on public.diag_instagram_leads (created_at desc);
 create index if not exists diag_leads_status_idx  on public.diag_instagram_leads (status);
 create index if not exists diag_leads_agendado_idx on public.diag_instagram_leads (agendado) where agendado;
+
+-- ================================================================
+-- QUIZ SUAVIS + atribuição — colunas adicionadas na adaptação
+-- (idempotente: rode o arquivo inteiro sem medo)
+-- ================================================================
+alter table public.diag_instagram_leads
+  add column if not exists idade              text not null default '',
+  add column if not exists sentimento         text not null default '',
+  add column if not exists area_afetada       text not null default '',
+  add column if not exists culpa              text not null default '',
+  add column if not exists ajuda_profissional text not null default '',
+  add column if not exists disposicao         text not null default '',
+  add column if not exists urgencia           text not null default '',
+  add column if not exists orcamento          text not null default '',
+  add column if not exists consciencia        text not null default '',
+  add column if not exists utm_source         text not null default '',
+  add column if not exists utm_medium         text not null default '',
+  add column if not exists utm_campaign       text not null default '',
+  add column if not exists utm_content        text not null default '',
+  add column if not exists utm_term           text not null default '',
+  add column if not exists fbclid             text not null default '',
+  add column if not exists referrer           text not null default '';

@@ -2,15 +2,15 @@ import Anthropic from '@anthropic-ai/sdk';
 import { buildDiagnosisPrompt } from '../_private.mjs';
 
 /**
- * PRÉ-DIAGNÓSTICO pelo MÉTODO CORE (prompt oficial do Fabio, adaptado
- * do app corereels para saída em formato de chat).
- * 3 pilares: Gatilho da Atenção · Conteúdo Notável · CTA & Conversão.
- * Estratégia: notas + veredito citando trechos reais, SEM revelar a
- * correção (seed → Sessão Estratégica).
+ * PRÉ-DIAGNÓSTICO EMOCIONAL SUAVIS (quiz da filha cuidadora).
+ * Recebe as 8 respostas do quiz + o desfecho calculado no front
+ * (low/mid/high) e devolve uma análise personalizada em formato chat:
+ * pilar Consciência aberto + notas dos 2 pilares trancados + a trava
+ * principal. Estratégia: profundidade SEM revelar o plano (seed →
+ * Sessão SUAVIS).
  * Sem ANTHROPIC_API_KEY (ou erro/timeout) → ok:false e o front usa o
  * template local. Modelo via env DIAGNOSIS_MODEL — padrão claude-haiku-4-5
- * (mesmo modelo do app corereels original do Fabio: o prompt do método é
- * grande e a janela da função Netlify é ~10s; modelos maiores estouram).
+ * (a janela da função Netlify é ~10s; modelos maiores estouram).
  */
 
 export default async (req) => {
@@ -21,9 +21,8 @@ export default async (req) => {
   if (!apiKey) return json({ ok: false, reason: 'no_key' });
 
   try {
-    const { nome, instagram, nicho, desafio, faturamento, uf, profile, reel, transcript } = await req.json();
-    if (!nome || !instagram) return json({ ok: false, reason: 'missing_fields' });
-    const temRoteiro = typeof transcript === 'string' && transcript.trim().length > 20;
+    const { nome, uf, respostas, consciencia, score } = await req.json();
+    if (!nome || !respostas || typeof respostas !== 'object') return json({ ok: false, reason: 'missing_fields' });
 
     const client = new Anthropic({
       apiKey,
@@ -31,34 +30,22 @@ export default async (req) => {
       maxRetries: 0,
     });
 
-    // Métricas pré-calculadas (não deixar o modelo fazer aritmética)
-    let fatos = '';
-    if (profile && profile.followersCount) {
-      const f = profile.followersCount;
-      fatos += `\n## DADOS REAIS DO PERFIL (coletados agora)\n` +
-        `- Seguidores: ${f.toLocaleString('pt-BR')}\n` +
-        `- Publicações: ${(profile.postsCount || 0).toLocaleString('pt-BR')}\n` +
-        (profile.fullName ? `- Nome no perfil: ${profile.fullName}\n` : '') +
-        (profile.biography ? `- Bio: "${String(profile.biography).slice(0, 300)}"\n` : '- Bio: vazia\n') +
-        (profile.businessCategoryName ? `- Categoria: ${profile.businessCategoryName}\n` : '') +
-        (profile.externalUrl ? `- Tem link na bio\n` : `- SEM link na bio (atenção: atenção gerada sem destino)\n`);
-      if (reel && reel.views != null) {
-        const ratio = f > 0 ? (reel.views / f) : 0;
-        const interacoes = (reel.likes || 0) + (reel.comments || 0);
-        fatos += `\n## REEL ESCOLHIDO PELO LEAD PARA ANÁLISE\n` +
-          `- Views: ${Number(reel.views).toLocaleString('pt-BR')} (${ratio >= 1 ? 'ACIMA' : 'abaixo'} da base — razão ${ratio.toFixed(2).replace('.', ',')}x)\n` +
-          (reel.likes != null ? `- Likes: ${Number(reel.likes).toLocaleString('pt-BR')}\n` : '') +
-          (reel.comments != null ? `- Comentários: ${Number(reel.comments).toLocaleString('pt-BR')}\n` : '') +
-          `- Interações totais: ${interacoes.toLocaleString('pt-BR')} (${f > 0 ? ((interacoes / f) * 100).toFixed(2).replace('.', ',') : '?'}% da base)\n` +
-          (temRoteiro
-            ? `- ROTEIRO DO VÍDEO (transcrição do áudio — esta é a matéria-prima principal da análise; NÃO mencione "legenda"):\n"${String(transcript).slice(0, 1400)}"\n`
-            : (reel.caption
-              ? `- TEXTO PUBLICADO DO REEL (legenda — única matéria-prima textual disponível):\n"${String(reel.caption).slice(0, 700)}"\n`
-              : '- Sem legenda (nenhum texto publicado para analisar)\n'));
-      }
-    }
+    // fatos pré-formatados (o modelo não precisa interpretar estrutura)
+    const r = respostas;
+    const linha = (rotulo, v) => v ? `- ${rotulo}: ${String(v).slice(0, 120)}\n` : '';
+    const fatos =
+      `\n## RESPOSTAS REAIS DO TESTE (dadas agora)\n` +
+      linha('Idade', r.idade) +
+      linha('Como se sente cuidando dos pais', r.sentimento) +
+      linha('Área da vida mais afetada', r.area) +
+      linha('Culpa por não dar conta de tudo (1-5)', r.culpa) +
+      linha('Já buscou ajuda profissional', r.ajuda) +
+      linha('Disposição para investir em si', r.disposicao) +
+      linha('Prazo desejado para melhora', r.urgencia) +
+      linha('Orçamento disponível', r.orcamento) +
+      `- Desfecho calculado: ${consciencia || '?'} (score ${score ?? '?'} /100)\n`;
 
-    const { system, userMsg } = buildDiagnosisPrompt({ nome, instagram, nicho, desafio, faturamento, uf, fatos, temRoteiro });
+    const { system, userMsg } = buildDiagnosisPrompt({ nome, uf, fatos });
 
     const response = await client.messages.create({
       model: process.env.DIAGNOSIS_MODEL || 'claude-haiku-4-5',
@@ -75,7 +62,7 @@ export default async (req) => {
 
     if (!text) return json({ ok: false, reason: 'empty' });
 
-    // extrai e remove as linhas técnicas (notas dos pilares trancados + gatilho ausente)
+    // extrai e remove as linhas técnicas (notas dos pilares trancados + trava principal)
     let notas = null, gatilho = '';
     const m = text.match(/\|\|NOTAS\|notavel=(\d{1,2})\|cta=(\d{1,2})\|\|/i);
     if (m) {
