@@ -4,9 +4,8 @@
 .netlify/
 .claude/
 
-# conteúdo proprietário: prompt do Método CORE + instância/closers do Cal
-# (o Netlify empacota via import; o repo público NÃO tem)
-netlify/_private.mjs
+# (netlify/_private.mjs agora é versionado: versão própria sem segredos —
+#  Cal real entra pelas envs CALCOM_BASE_URL / CAL_EMBED_VENDEDORES)
 
 # dependências e arquivos de sistema
 node_modules/
