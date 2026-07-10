@@ -1,14 +1,14 @@
 /**
  * Espelho dos agendamentos do Cal (aba "Agendamentos" do painel).
- * Puxa direto da API interna do Cal (<sua-instancia-cal>/interno/bookings) —
- * fonte da verdade, inclui bookings feitos fora do funil e o status real.
+ * Puxa da API pública v2 do Cal.com (GET /v2/bookings) — fonte da verdade,
+ * inclui bookings feitos fora do funil e o status real.
  * Protegido pelo DASHBOARD_TOKEN (mesmo do /api/metrics).
  *
- * OBS: a API interna devolve os ~50 bookings mais recentes (sem paginação).
  *   GET /api/cal-bookings → { ok, count, bookings:[{uid,eventTypeId,evento,start,end,status,attendee,attendeesCount}] }
  */
 import { CAL_BASE as PRIV_CAL_BASE } from '../_private.mjs';
 const CAL_BASE = (process.env.CALCOM_BASE_URL || PRIV_CAL_BASE).replace(/\/+$/, '');
+const V_BOOKINGS = '2024-08-13';
 
 export default async (req) => {
   if (req.method === 'OPTIONS') return new Response('', { headers: cors() });
@@ -24,7 +24,9 @@ export default async (req) => {
   if (!safeEqual(String(token), String(EXPECTED))) return json({ error: 'unauthorized' }, 401);
 
   try {
-    const r = await fetch(`${CAL_BASE}/bookings`, { headers: { Authorization: `Bearer ${apiKey}` } });
+    const r = await fetch(`${CAL_BASE}/bookings?take=100&sortStart=desc`, {
+      headers: { Authorization: `Bearer ${apiKey}`, 'cal-api-version': V_BOOKINGS },
+    });
     if (!r.ok) { console.error('cal-bookings:', r.status, await r.text().catch(() => '')); return json({ ok: false, reason: 'cal_error' }, 502); }
     const data = await r.json();
     const arr = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
@@ -37,7 +39,7 @@ export default async (req) => {
         eventTypeId: b.eventTypeId ?? null,
         evento,
         start: b.startTime || b.start || '',
-        end: b.endTime || '',
+        end: b.endTime || b.end || '',
         created: b.createdAt || b.created || '',
         status: b.status || '',
         attendee: (at[0] && at[0].name) || '',

@@ -69,7 +69,7 @@ ${fatos}
   return { system, userMsg };
 }
 
-// Instância do Cal e pool de closers — placeholders.
-// Valores reais via envs: CALCOM_BASE_URL (base) e CAL_EMBED_VENDEDORES (JSON).
-export const CAL_BASE = 'https://cal.example.com/interno';
+// API pública v2 do Cal.com (override via env CALCOM_BASE_URL).
+// Pool de vendedores opcional via env CAL_EMBED_VENDEDORES (JSON).
+export const CAL_BASE = 'https://api.cal.com/v2';
 export const VENDEDORES = [];

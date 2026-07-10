@@ -1,15 +1,16 @@
 /**
- * MOTOR DE AGENDAMENTO INVISÍVEL — proxy da API interna do Cal (<sua-instancia-cal>/interno).
- * O lead nunca vê o Cal.com: a agenda inline do funil consulta horários reais e
- * cria o booking de verdade por aqui. O booking dispara o webhook do Cal →
- * integração calcom-sprinthub existente joga o lead no funil Comercial.
+ * MOTOR DE AGENDAMENTO INVISÍVEL — API pública v2 do Cal.com (api.cal.com/v2).
+ * A lead nunca vê o Cal.com: a agenda inline do funil consulta horários reais e
+ * cria o booking de verdade por aqui. A confirmação oficial do Cal chega por
+ * e-mail com o link da sala.
  *
- * ── Contrato da API interna (descoberto em 2026-06-14) ──
- *   Auth: header  Authorization: Bearer <CALCOM_API_KEY>   (sem cal-api-version)
- *   GET  /event-types                         → { data:[{id,title,slug,length,...}] }
- *   GET  /slots?eventTypeId&from&to&timeZone   → { data:{ slots:{ 'YYYY-MM-DD':[{time:ISO}] } } }
- *   POST /bookings  {eventTypeId,start,name,email,timeZone,phone?,metadata?}
- *   GET  /bookings/{uid}                       → { data:{ uid,startTime,status,attendees,... } }
+ * ── Contrato da API v2 (validado em 2026-07-10) ──
+ *   Auth: Authorization: Bearer <CALCOM_API_KEY> + header cal-api-version
+ *   GET  /slots?eventTypeId&start=YYYY-MM-DD&end&timeZone  (v: 2024-09-04)
+ *        → { data:{ 'YYYY-MM-DD':[{start:ISO}] } }
+ *   POST /bookings {eventTypeId,start,attendee:{name,email,timeZone,phoneNumber?,language},metadata?}
+ *        (v: 2024-08-13) → { data:{ uid,start,location,meetingUrl,... } }
+ *   GET  /bookings/{uid}  (v: 2024-08-13) → { data:{ uid,start,status,attendees,location,... } }
  *
  * Actions deste proxy:
  *   { action:'route', renda, nicho, bio }              → { ok, track, vendor, vendorEventTypeId, embedLink }
@@ -17,17 +18,18 @@
  *   { action:'book',  start:ISO, nome, email, whatsapp, vendorEventTypeId? } → { ok, uid, start, videoUrl, track, vendor }
  *   { action:'info',  uid }                            → { ok, nome, start, status, videoUrl }
  *
- * Env: CALCOM_API_KEY, CALCOM_BASE_URL (=https://<sua-instancia-cal>/interno),
- *      CALCOM_EVENT_TYPE_ID (event type único da trilha PADRÃO — opcional, ligar depois),
- *      CALCOM_EVENT_TYPE_ID_AUDIENCE (trilha 10k+ NÃO-médico → "Conheça o Método Core Audience"),
- *      CAL_EMBED_VENDEDORES (override do pool premium, JSON).
+ * Env: CALCOM_API_KEY (cal_live_...), CALCOM_BASE_URL (padrão https://api.cal.com/v2),
+ *      CALCOM_EVENT_TYPE_ID (event type da Sessão SUAVIS — trilha padrão),
+ *      CAL_EMBED_VENDEDORES (pool opcional de vendedores, JSON).
  * Sem CALCOM_API_KEY → actions de slots/book/info devolvem {ok:false,reason:'no_key'} e o funil usa a agenda local.
  */
 import { CAL_BASE as PRIV_CAL_BASE, VENDEDORES } from '../_private.mjs';
 const TZ = 'America/Sao_Paulo';
 
-/* Base da API interna (proxy próprio do Fabio). NÃO leva /v2. */
 const CAL_BASE = (process.env.CALCOM_BASE_URL || PRIV_CAL_BASE).replace(/\/+$/, '');
+/* versões da API v2 por recurso (header cal-api-version) */
+const V_SLOTS = '2024-09-04';
+const V_BOOKINGS = '2024-08-13';
 
 /* Supabase (mesmo projeto do funil) — usado só pra reaproveitar o link de
    vídeo do 1º booking de um horário em GRUPO (seats): nos assentos seguintes
@@ -133,8 +135,10 @@ async function resolverVendedor(trilha, vendorEventTypeId) {
   return envId ? { eventTypeId: +envId, vendor: '', link: '' } : null;
 }
 
-async function calGet(path, apiKey) {
-  return fetch(`${CAL_BASE}${path}`, { headers: { Authorization: `Bearer ${apiKey}` } });
+async function calGet(path, apiKey, version) {
+  return fetch(`${CAL_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${apiKey}`, ...(version ? { 'cal-api-version': version } : {}) },
+  });
 }
 
 export default async (req) => {
@@ -167,7 +171,7 @@ export default async (req) => {
     /* ---------- INFO: só precisa do uid (independe de trilha/vendedor) ---------- */
     if (body.action === 'info') {
       if (!body.uid) return json({ ok: false, reason: 'missing_uid' });
-      const r = await calGet(`/bookings/${encodeURIComponent(body.uid)}`, apiKey);
+      const r = await calGet(`/bookings/${encodeURIComponent(body.uid)}`, apiKey, V_BOOKINGS);
       if (!r.ok) return json({ ok: false, reason: 'not_found' });
       const data = await r.json().catch(() => ({}));
       const b = data?.data ?? data;
@@ -187,12 +191,10 @@ export default async (req) => {
 
     /* ---------- SLOTS: disponibilidade real ---------- */
     if (body.action === 'slots') {
-      const from = `${body.start}T00:00:00.000Z`;
-      const to = `${body.end}T23:59:59.999Z`;
       const r = await calGet(
         `/slots?eventTypeId=${encodeURIComponent(eventTypeId)}` +
-        `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` +
-        `&timeZone=${encodeURIComponent(TZ)}`, apiKey);
+        `&start=${encodeURIComponent(body.start)}&end=${encodeURIComponent(body.end)}` +
+        `&timeZone=${encodeURIComponent(TZ)}`, apiKey, V_SLOTS);
       if (!r.ok) {
         console.error('cal slots error:', r.status, await r.text().catch(() => ''));
         return json({ ok: false, reason: 'cal_error' });
@@ -228,17 +230,19 @@ export default async (req) => {
       const payload = {
         eventTypeId: Number(eventTypeId),
         start: new Date(start).toISOString(),
-        name: String(nome).slice(0, 120),
-        email: String(email).slice(0, 200),
-        timeZone: TZ,
-        language: 'pt',
-        ...(whatsapp ? { phone: '+' + String(whatsapp).replace(/\D/g, '') } : {}),
+        attendee: {
+          name: String(nome).slice(0, 120),
+          email: String(email).slice(0, 200),
+          timeZone: TZ,
+          language: 'pt',
+          ...(whatsapp ? { phoneNumber: '+' + String(whatsapp).replace(/\D/g, '') } : {}),
+        },
         ...(metadata && typeof metadata === 'object' ? { metadata: slimMeta(metadata) } : {}),
       };
 
       const r = await fetch(`${CAL_BASE}/bookings`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${apiKey}`, 'cal-api-version': V_BOOKINGS, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       const data = await r.json().catch(() => ({}));
